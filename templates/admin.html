@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin — SnapLink</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="dashboard">
+  <nav>
+    <div class="logo">SnapLink <span class="admin-badge">Admin</span></div>
+    <div class="nav-right">
+      <div class="user-pill">
+        <div class="user-avatar">{{ admin.full_name[0].upper() if admin.full_name else admin.email[0].upper() }}</div>
+        <span class="user-email">{{ admin.full_name or admin.email }}</span>
+      </div>
+      <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <div>
+        <div class="page-title">Admin Dashboard</div>
+        <div class="page-sub">Full site overview — users, visits, logins, links</div>
+      </div>
+    </div>
+
+    <!-- STATS GRID -->
+    <div class="stats-grid" style="grid-template-columns:repeat(5,1fr); margin-bottom:2rem;">
+      <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value">{{ total_users }}</div></div>
+      <div class="stat-card"><div class="stat-label">Total Links</div><div class="stat-value">{{ total_links }}</div></div>
+      <div class="stat-card"><div class="stat-label">Total Clicks</div><div class="stat-value">{{ total_clicks }}</div></div>
+      <div class="stat-card"><div class="stat-label">Site Visits</div><div class="stat-value">{{ total_visits }}</div></div>
+      <div class="stat-card"><div class="stat-label">Total Logins</div><div class="stat-value">{{ total_logins }}</div></div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showTab('users')">👥 Users</button>
+      <button class="tab-btn" onclick="showTab('logins')">🔑 Login History</button>
+      <button class="tab-btn" onclick="showTab('visits')">🌐 Site Visits</button>
+      <button class="tab-btn" onclick="showTab('pages')">📄 Top Pages</button>
+    </div>
+
+    <!-- TAB: USERS -->
+    <div class="tab-panel active" id="tab-users">
+      <div class="section-title" style="margin-bottom:0.75rem">All Users</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Links</th>
+              <th>Logins</th>
+              <th>Last Login</th>
+              <th>Joined</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in user_data %}
+            <tr id="urow-{{ item.user.id }}">
+              <td class="date-col">{{ item.user.id }}</td>
+              <td style="font-weight:500">{{ item.user.full_name or '—' }}</td>
+              <td class="short-url">{{ item.user.email }}</td>
+              <td>
+                {% if item.user.is_admin %}
+                  <span class="admin-tag">Admin</span>
+                {% else %}
+                  <span style="color:var(--muted);font-size:0.75rem">User</span>
+                {% endif %}
+              </td>
+              <td class="clicks-col">{{ item.link_count }}</td>
+              <td class="clicks-col">{{ item.login_count }}</td>
+              <td class="date-col">
+                {% if item.user.last_login %}
+                  {{ item.user.last_login.strftime('%b %d, %Y %H:%M') }}
+                {% else %}
+                  Never
+                {% endif %}
+              </td>
+              <td class="date-col">{{ item.user.created_at.strftime('%b %d, %Y') }}</td>
+              <td>
+                <div class="user-row-status">
+                  <span class="{% if item.user.is_active %}active-dot{% else %}inactive-dot{% endif %}" id="udot-{{ item.user.id }}"></span>
+                  <span id="ustatus-{{ item.user.id }}" style="font-size:0.75rem; color:{% if item.user.is_active %}#10b981{% else %}#64748b{% endif %}">
+                    {% if item.user.is_active %}Active{% else %}Disabled{% endif %}
+                  </span>
+                </div>
+              </td>
+              <td>
+                {% if not item.user.is_admin %}
+                <button class="toggle-btn" id="ubtn-{{ item.user.id }}" onclick="toggleUser({{ item.user.id }}, {{ 'true' if item.user.is_active else 'false' }})">
+                  {% if item.user.is_active %}Disable{% else %}Enable{% endif %}
+                </button>
+                {% else %}
+                  <span style="color:var(--muted);font-size:0.7rem">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: LOGIN HISTORY -->
+    <div class="tab-panel" id="tab-logins">
+      <div class="section-title" style="margin-bottom:0.75rem">Recent Login Activity (Last 20)</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Email</th>
+              <th>IP Address</th>
+              <th>Browser / Device</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in login_data %}
+            <tr>
+              <td style="font-weight:500">{{ item.user.full_name if item.user else '—' }}</td>
+              <td class="short-url">{{ item.user.email if item.user else '—' }}</td>
+              <td><span class="path-badge">{{ item.log.ip_address or '—' }}</span></td>
+              <td><span class="ua-text" title="{{ item.log.user_agent }}">{{ item.log.user_agent or '—' }}</span></td>
+              <td class="date-col">{{ item.log.logged_in_at.strftime('%b %d, %Y %H:%M') }}</td>
+            </tr>
+            {% endfor %}
+            {% if not login_data %}
+            <tr><td colspan="5"><div class="empty-state">No login history yet.</div></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: SITE VISITS -->
+    <div class="tab-panel" id="tab-visits">
+      <div class="section-title" style="margin-bottom:0.75rem">Recent Site Visits (Last 20)</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Page</th>
+              <th>IP Address</th>
+              <th>Browser / Device</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for visit in recent_visits %}
+            <tr>
+              <td><span class="path-badge">{{ visit.path }}</span></td>
+              <td><span class="path-badge">{{ visit.ip_address or '—' }}</span></td>
+              <td><span class="ua-text" title="{{ visit.user_agent }}">{{ visit.user_agent or '—' }}</span></td>
+              <td class="date-col">{{ visit.visited_at.strftime('%b %d, %Y %H:%M') }}</td>
+            </tr>
+            {% endfor %}
+            {% if not recent_visits %}
+            <tr><td colspan="4"><div class="empty-state">No visits recorded yet.</div></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB: TOP PAGES -->
+    <div class="tab-panel" id="tab-pages">
+      <div class="section-title" style="margin-bottom:0.75rem">Top Pages by Visits</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Page Path</th><th>Visits</th><th>Traffic</th></tr>
+          </thead>
+          <tbody>
+            {% set max_count = page_visits[0][1] if page_visits else 1 %}
+            {% for path, count in page_visits %}
+            <tr>
+              <td><span class="path-badge">{{ path }}</span></td>
+              <td class="clicks-col">{{ count }}</td>
+              <td>
+                <div class="count-bar-wrap">
+                  <div class="count-bar" style="width:{{ [(count / max_count * 160)|int, 4]|max }}px"></div>
+                  <span style="font-size:0.72rem;color:var(--muted)">{{ ((count / max_count) * 100)|int }}%</span>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+            {% if not page_visits %}
+            <tr><td colspan="3"><div class="empty-state">No data yet.</div></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    function showTab(name) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    async function toggleUser(userId, currentlyActive) {
+      try {
+        const res = await fetch(`/admin/toggle-user/${userId}`, { method: 'POST' });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const dot = document.getElementById('udot-' + userId);
+        const status = document.getElementById('ustatus-' + userId);
+        const btn = document.getElementById('ubtn-' + userId);
+        if (data.is_active) {
+          dot.className = 'active-dot';
+          status.textContent = 'Active';
+          status.style.color = '#10b981';
+          btn.textContent = 'Disable';
+        } else {
+          dot.className = 'inactive-dot';
+          status.textContent = 'Disabled';
+          status.style.color = '#64748b';
+          btn.textContent = 'Enable';
+        }
+        showToast(data.is_active ? '✓ User enabled' : '✓ User disabled');
+      } catch { showToast('Something went wrong'); }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LinkAI — Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <nav>
+    <div class="logo">LinkAI</div>
+    <div class="nav-right">
+      <a href="/">Home</a>
+      <div class="user-pill">
+        <div class="user-avatar">{{ user.full_name[0].upper() if user.full_name else user.email[0].upper() }}</div>
+        <span class="user-email">{{ user.full_name or user.email }}</span>
+      </div>
+      <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Welcome back, {{ user.full_name or user.email }}</div>
+      </div>
+      <a href="/" class="new-link-btn">+ New Link</a>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Total Links</div><div class="stat-value">{{ total_links }}</div></div>
+      <div class="stat-card"><div class="stat-label">Total Clicks</div><div class="stat-value">{{ total_clicks }}</div></div>
+      <div class="stat-card"><div class="stat-label">Active Links</div><div class="stat-value" style="color:#10b981">{{ urls | selectattr('url.is_active') | list | length }}</div></div>
+      <div class="stat-card"><div class="stat-label">Flagged</div><div class="stat-value" style="color:#ef4444">{{ spam_count }}</div></div>
+    </div>
+
+    <!-- CLICKS CHART -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Clicks over time</div>
+        <div class="chart-sub">Last 30 days</div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="clicksChart"></canvas>
+      </div>
+    </div>
+
+    {% if tag_counts %}
+    <div class="tag-section">
+      <div class="section-title">Links by Category</div>
+      <div class="tag-chips">
+        {% for tag, count in tag_counts.items() %}
+        <div class="tag-chip tag-badge tag-{{ tag }}">{{ tag }} <span class="count">{{ count }}</span></div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="section-title" style="margin-bottom:0.75rem">All Links</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Short Link</th>
+            <th>Original Link</th>
+            <th>Category</th>
+            <th>Safety</th>
+            <th>Clicks</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if urls %}
+            {% for item in urls %}
+            <tr id="row-{{ item.url.short_code }}">
+              <td>
+                <div class="short-cell">
+                  <a href="/r/{{ item.url.short_code }}" target="_blank" class="short-url">{{ base_url }}/r/{{ item.url.short_code }}</a>
+                  <button class="icon-btn" onclick="copyLink('{{ base_url }}/r/{{ item.url.short_code }}')" title="Copy">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  </button>
+                </div>
+              </td>
+              <td>
+                <div class="orig-cell">
+                  <img class="site-favicon"
+                    src="https://www.google.com/s2/favicons?domain={{ item.url.original_url }}&sz=32"
+                    onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+                    alt="">
+                  <div class="favicon-placeholder" style="display:none">{{ (item.url.title or '?')[0].upper() }}</div>
+                  <span class="orig-url" title="{{ item.url.original_url }}">{{ item.url.original_url }}</span>
+                </div>
+              </td>
+              <td><span class="tag-badge tag-{{ (item.url.category or 'Other')|replace(' ','-') }}">{{ item.url.category or 'Other' }}</span></td>
+              <td>
+                {% if not item.url.is_safe %}<span class="spam-badge">⚠ Flagged</span>
+                {% else %}<span class="safe-badge">✓ Safe</span>{% endif %}
+              </td>
+              <td class="clicks-col">{{ item.click_count }}</td>
+              <td>
+                <div class="status-cell">
+                  <span class="status-dot {% if item.url.is_active %}dot-active{% else %}dot-inactive{% endif %}"></span>
+                  <span class="{% if item.url.is_active %}status-text-active{% else %}status-text-inactive{% endif %}">
+                    {% if item.url.is_active %}Active{% else %}Inactive{% endif %}
+                  </span>
+                  <button class="toggle-btn" onclick="toggleStatus('{{ item.url.short_code }}', {{ 'true' if item.url.is_active else 'false' }})">
+                    {% if item.url.is_active %}Deactivate{% else %}Activate{% endif %}
+                  </button>
+                </div>
+              </td>
+              <td class="date-col">{{ item.url.created_at.strftime('%b %d, %Y') }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="7">
+              <div class="empty-state">
+                <div class="empty-icon">🔗</div>
+                No links yet!<br/>
+                <a href="/" class="empty-cta">Shorten your first URL →</a>
+              </div>
+            </td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    function copyLink(url) {
+      navigator.clipboard.writeText(url).then(() => showToast('✓ Copied to clipboard!'));
+    }
+
+    async function toggleStatus(code, currentlyActive) {
+      try {
+        const res = await fetch(`/toggle/${code}`, { method: 'POST' });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const row = document.getElementById('row-' + code);
+        const dot = row.querySelector('.status-dot');
+        const text = row.querySelector('[class^="status-text"]');
+        const btn = row.querySelector('.toggle-btn');
+
+        if (data.is_active) {
+          dot.className = 'status-dot dot-active';
+          text.className = 'status-text-active';
+          text.textContent = 'Active';
+          btn.textContent = 'Deactivate';
+        } else {
+          dot.className = 'status-dot dot-inactive';
+          text.className = 'status-text-inactive';
+          text.textContent = 'Inactive';
+          btn.textContent = 'Activate';
+        }
+        showToast(data.is_active ? '✓ Link activated' : '✓ Link deactivated');
+      } catch {
+        showToast('Something went wrong');
+      }
+    }
+  </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script>
+    // ── clicks chart ───────────────────────────────────────
+    const labels = {{ chart_labels | tojson }};
+    const values = {{ chart_values | tojson }};
+
+    const ctx = document.getElementById('clicksChart').getContext('2d');
+
+    // gradient fill
+    const grad = ctx.createLinearGradient(0, 0, 0, 200);
+    grad.addColorStop(0, 'rgba(124, 58, 237, 0.35)');
+    grad.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          borderColor: '#7c3aed',
+          borderWidth: 2,
+          backgroundColor: grad,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHoverBackgroundColor: '#7c3aed',
+          pointHoverBorderColor: '#fff',
+          pointHoverBorderWidth: 2,
+          fill: true,
+          tension: 0.4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1e1e2e',
+            titleColor: '#94a3b8',
+            bodyColor: '#e2e8f0',
+            borderColor: 'rgba(124,58,237,0.3)',
+            borderWidth: 1,
+            padding: 10,
+            callbacks: {
+              title: items => items[0].label,
+              label: item => ` ${item.raw} click${item.raw !== 1 ? 's' : ''}`,
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+            ticks: {
+              color: '#64748b',
+              font: { family: "'DM Mono', monospace", size: 10 },
+              maxTicksLimit: 8,
+              maxRotation: 0,
+            },
+            border: { display: false }
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+            ticks: {
+              color: '#64748b',
+              font: { family: "'DM Mono', monospace", size: 10 },
+              stepSize: 1,
+              precision: 0,
+            },
+            border: { display: false }
+          }
+        }
+      }
+    });
+  </script>
+
+</body>
+</html>

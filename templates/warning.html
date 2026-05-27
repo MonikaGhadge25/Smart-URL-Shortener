@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Warning — SnapLink</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="warning-page">
+  <div class="warn-card">
+    <div class="warn-icon">⚠️</div>
+    <div class="warn-title">Suspicious Link Detected</div>
+    <div class="warn-desc">Our AI flagged this URL as potentially unsafe. It may be a phishing attempt, spam, or contain malicious content.</div>
+    <div class="warn-url">{{ url.original_url }}</div>
+    {% if url.safety_note %}
+    <div class="warn-note">Reason: {{ url.safety_note }}</div>
+    {% endif %}
+    <div class="btn-row">
+      <a href="/" class="btn-back">← Go Back to Safety</a>
+      <a href="{{ url.original_url }}" class="btn-proceed" rel="noopener noreferrer" target="_blank">Proceed anyway</a>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SnapLink — Smart URL Shortener</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+ <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<nav>
+  <div class="logo">⚡ Smart URL Shortener</div>
+  <div class="nav-links">
+    {% if user %}
+      <a href="/dashboard">Dashboard</a>
+      <div class="user-pill">
+        <div class="user-avatar">{{ user.full_name[0].upper() if user.full_name else user.email[0].upper() }}</div>
+        <span class="user-name">{{ user.full_name or user.email }}</span>
+      </div>
+      <a href="/logout" class="logout-link">Logout</a>
+    {% else %}
+      <a href="/login">Login</a>
+      <a href="/register" class="nav-btn">Get Started Free</a>
+    {% endif %}
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="badge"><span class="badge-dot"></span> AI-Powered URL Intelligence</div>
+  <h1>Shorten. Analyze.<br><span>Stay Safe.</span></h1>
+  <p class="subtitle">Smart URL shortener that auto-tags your links and detects phishing & spam — powered by AI.</p>
+
+  <div class="form-card">
+    <div class="input-group">
+      <input type="url" id="urlInput" class="url-input" placeholder="Paste your long URL here..." autocomplete="off" />
+      <button class="shorten-btn" onclick="handleShorten()" id="shortenBtn">
+        <div class="spinner" id="spinner"></div>
+        <span id="btnText">Shorten ✦</span>
+      </button>
+    </div>
+    <div id="result">
+      <div class="result-box">
+        <div class="result-header">
+          <div>
+            <div class="result-label">Your short link</div>
+            <div class="result-url" id="shortUrl"></div>
+          </div>
+          <button class="copy-btn" onclick="copyURL()">Copy link</button>
+        </div>
+        <div class="tags" id="tags"></div>
+        <div class="original-link" id="originalLink"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AUTH MODAL (shown to guests) -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-icon">🔐</div>
+    <div class="modal-title">Login to shorten URLs</div>
+    <div class="modal-sub">Create a free account to start shortening links, track clicks, and get AI-powered safety analysis.</div>
+    <div class="modal-btns">
+      <a href="/register" class="modal-btn-primary">Create Free Account</a>
+      <a href="/login" class="modal-btn-secondary">Sign In</a>
+    </div>
+  </div>
+</div>
+
+<section class="features">
+  <div class="section-label">Why SnapLink</div>
+  <div class="section-title">Not just shorter — smarter</div>
+  <div class="grid">
+    <div class="feature-card">
+      <div class="feature-icon">🤖</div>
+      <div class="feature-title">AI Auto-Tagging</div>
+      <div class="feature-desc">Claude AI reads your page and instantly categorizes it — Tech, News, Finance, and more.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <div class="feature-title">Spam Detection</div>
+      <div class="feature-desc">Google Safe Browsing + AI cross-check flags phishing and malicious URLs before anyone clicks.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Click Analytics</div>
+      <div class="feature-desc">Track every click with timestamp, device, and referrer data on your personal dashboard.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">Lightning Fast</div>
+      <div class="feature-desc">Built with FastAPI for blazing-fast redirects. No unnecessary delays between click and destination.</div>
+    </div>
+  </div>
+</section>
+
+{% if not user %}
+<div style="padding: 0 1.5rem;">
+  <div class="cta-banner">
+    <div class="cta-title">Ready to get started?</div>
+    <div class="cta-sub">Join for free. No credit card required.</div>
+    <div class="cta-btns">
+      <a href="/register" class="cta-btn-primary">Create Free Account →</a>
+      <a href="/login" class="cta-btn-secondary">Sign In</a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<footer>Built with FastAPI + Claude AI · SnapLink © 2025</footer>
+<div id="toast">✓ Copied to clipboard!</div>
+
+<script>
+  const isLoggedIn = {{ 'true' if user else 'false' }};
+  let currentShortUrl = '';
+
+  function handleShorten() {
+    if (!isLoggedIn) {
+      document.getElementById('authModal').classList.add('open');
+      return;
+    }
+    shortenURL();
+  }
+
+  function closeModal() {
+    document.getElementById('authModal').classList.remove('open');
+  }
+
+  // Close modal on overlay click
+  document.getElementById('authModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  async function shortenURL() {
+    const input = document.getElementById('urlInput');
+    const url = input.value.trim();
+    if (!url) { input.focus(); return; }
+
+    const btn = document.getElementById('shortenBtn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btnText');
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    btnText.textContent = 'Analyzing...';
+
+    try {
+      const res = await fetch('/shorten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+
+      if (res.status === 401) {
+        document.getElementById('authModal').classList.add('open');
+        return;
+      }
+
+      const data = await res.json();
+      currentShortUrl = data.short_url;
+      document.getElementById('shortUrl').textContent = data.short_url;
+      document.getElementById('originalLink').textContent = '→ ' + (data.title || url);
+
+      const tags = document.getElementById('tags');
+      tags.innerHTML = '';
+      if (data.category) tags.innerHTML += `<span class="tag tag-category">${data.category}</span>`;
+      if (data.is_safe) tags.innerHTML += `<span class="tag tag-safe">✓ Safe</span>`;
+      else tags.innerHTML += `<span class="tag tag-warn">⚠ Suspicious</span>`;
+
+      document.getElementById('result').style.display = 'block';
+    } catch (e) {
+      alert('Something went wrong. Please try again.');
+    } finally {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      btnText.textContent = 'Shorten ✦';
+    }
+  }
+
+  function copyURL() {
+    navigator.clipboard.writeText(currentShortUrl).then(() => {
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    });
+  }
+
+  document.getElementById('urlInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleShorten();
+  });
+</script>
+</body>
+</html>

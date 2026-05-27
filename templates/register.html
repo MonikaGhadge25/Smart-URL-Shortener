@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Register — SnapLink</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="auth-page register-page">
+  <div class="card">
+    <div class="logo">⚡ SnapLink</div>
+    <div class="tagline">AI-Powered URL Intelligence</div>
+    <h2>Create your account</h2>
+    <div class="subtitle">Free forever. No credit card needed.</div>
+
+    <div class="perks">
+      <div class="perk"><span class="perk-dot"></span>AI-powered URL categorization</div>
+      <div class="perk"><span class="perk-dot"></span>Spam & phishing detection</div>
+      <div class="perk"><span class="perk-dot"></span>Personal analytics dashboard</div>
+    </div>
+
+    {% if error %}
+    <div class="error-box">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/register">
+      <div class="field">
+        <label>Full name</label>
+        <input type="text" name="full_name" placeholder="John Doe" autocomplete="name"/>
+      </div>
+      <div class="field">
+        <label>Email address</label>
+        <input type="email" name="email" placeholder="you@example.com" required autocomplete="email"/>
+      </div>
+      <div class="field">
+        <label>Password <span style="color:var(--muted);font-size:0.75rem">(min 6 characters)</span></label>
+        <input type="password" name="password" placeholder="••••••••" required autocomplete="new-password"/>
+      </div>
+      <button type="submit" class="btn">Create Account →</button>
+    </form>
+
+    <div class="footer-link">
+      Already have an account? <a href="/login">Sign in</a>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,23 @@
+# Environment variables - NEVER commit this
+.env
+
+# Database - don't push local data
+shortener.db
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
