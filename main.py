@@ -1,4 +1,7 @@
 import asyncio
+import os
+from dotenv import load_dotenv
+load_dotenv()
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,7 +20,7 @@ app = FastAPI(title="Smart URL Shortener")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
 
 @app.on_event("startup")
@@ -291,17 +294,51 @@ async def dashboard(request: Request):
     if user.is_admin:
         return RedirectResponse("/admin", status_code=302)
 
+    from datetime import timedelta
+    from collections import defaultdict
+
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(URL).where(URL.user_id == user.id).order_by(URL.created_at.desc())
         )
         urls = result.scalars().all()
+        url_ids = [u.id for u in urls]
+
         url_data = []
         for u in urls:
             count_result = await db.execute(
                 select(func.count(Click.id)).where(Click.url_id == u.id)
             )
             url_data.append({"url": u, "click_count": count_result.scalar() or 0})
+
+        today = datetime.now(timezone.utc).date()
+        thirty_days_ago = today - timedelta(days=29)
+        chart_labels = []
+        chart_values = []
+
+        if url_ids:
+            clicks_result = await db.execute(
+                select(Click.clicked_at).where(
+                    Click.url_id.in_(url_ids),
+                    Click.clicked_at >= datetime.combine(
+                        thirty_days_ago, datetime.min.time()
+                    ).replace(tzinfo=timezone.utc)
+                )
+            )
+            all_clicks = clicks_result.scalars().all()
+            daily = defaultdict(int)
+            for c in all_clicks:
+                day = c.date() if hasattr(c, 'date') else c
+                daily[str(day)] += 1
+            for i in range(30):
+                day = thirty_days_ago + timedelta(days=i)
+                chart_labels.append(day.strftime("%b %d"))
+                chart_values.append(daily.get(str(day), 0))
+        else:
+            for i in range(30):
+                day = thirty_days_ago + timedelta(days=i)
+                chart_labels.append(day.strftime("%b %d"))
+                chart_values.append(0)
 
     total_clicks = sum(d["click_count"] for d in url_data)
     spam_count = sum(1 for d in url_data if not d["url"].is_safe)
@@ -313,7 +350,8 @@ async def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {
         "request": request, "user": user, "urls": url_data,
         "total_clicks": total_clicks, "total_links": len(url_data),
-        "spam_count": spam_count, "tag_counts": tag_counts, "base_url": BASE_URL
+        "spam_count": spam_count, "tag_counts": tag_counts, "base_url": BASE_URL,
+        "chart_labels": chart_labels, "chart_values": chart_values,
     })
 
 
@@ -405,15 +443,3 @@ async def admin_toggle_user(user_id: int, request: Request):
         target.is_active = not target.is_active
         await db.commit()
         return JSONResponse({"is_active": target.is_active})
-
-@app.get("/setup-admin-xk92p/{email}")
-async def setup_admin(email: str):
-    """One-time route to make a user admin. Delete from main.py after use."""
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(select(User).where(User.email == email))
-        user = result.scalar_one_or_none()
-        if not user:
-            return JSONResponse({"error": f"User '{email}' not found. Register first."}, status_code=404)
-        user.is_admin = True
-        await db.commit()
-        return JSONResponse({"success": f"✓ {email} is now admin! Remove this route from main.py now."})
