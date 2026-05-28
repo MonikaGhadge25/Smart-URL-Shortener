@@ -57,9 +57,3 @@ smart-url-shortener/
 - **httpx + BeautifulSoup** — Web scraping
 - **Jinja2** — HTML templating
 
-## Next Steps (Week 2–4)
-- [ ] Add click tracking with device/browser details
-- [ ] World map heatmap of clicks by country
-- [ ] User authentication (register/login)
-- [ ] Link expiry dates
-- [ ] Deploy to Render or Railway
