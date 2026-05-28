@@ -1,4 +1,4 @@
-# 🔗 LinkAI — URL Shortener
+# 🔗 LinkAI — Smart URL Shortener
 
 An AI-powered URL shortener that auto-categorizes links and detects spam using Claude AI.
 
