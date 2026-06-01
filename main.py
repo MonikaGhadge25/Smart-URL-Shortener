@@ -1,4 +1,8 @@
 import asyncio
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,7 +21,7 @@ app = FastAPI(title="Smart URL Shortener")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
 
 @app.on_event("startup")
@@ -133,12 +137,9 @@ async def login(request: Request):
 
         is_admin = user.is_admin
         user_id = user.id
-
-        # Update last login
         user.last_login = datetime.now(timezone.utc)
         await db.commit()
 
-    # Log login in background to avoid DB lock
     asyncio.create_task(log_login(user_id, request.client.host, request.headers.get("user-agent", "")))
 
     token = create_session_token(user_id)
@@ -155,7 +156,7 @@ async def logout():
     return response
 
 
-# ─── MAIN ROUTES (regular users only) ───────────────────────
+# ─── MAIN ROUTES ─────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
@@ -308,7 +309,6 @@ async def dashboard(request: Request):
             )
             url_data.append({"url": u, "click_count": count_result.scalar() or 0})
 
-        # Clicks per day — last 30 days
         today = datetime.now(timezone.utc).date()
         thirty_days_ago = today - timedelta(days=29)
         chart_labels = []
@@ -440,3 +440,17 @@ async def admin_toggle_user(user_id: int, request: Request):
         target.is_active = not target.is_active
         await db.commit()
         return JSONResponse({"is_active": target.is_active})
+
+
+# ─── TEMP ADMIN SETUP (remove after use) ─────────────────────
+
+@app.get("/setup-admin-xk92p/{email}")
+async def setup_admin(email: str):
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if not user:
+            return JSONResponse({"error": f"User '{email}' not found. Register first."}, status_code=404)
+        user.is_admin = True
+        await db.commit()
+        return JSONResponse({"success": f"✓ {email} is now admin! Remove this route from main.py now."})
