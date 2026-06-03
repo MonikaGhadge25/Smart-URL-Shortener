@@ -12,8 +12,8 @@ class User(Base):
     full_name = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    last_login = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    last_login = Column(DateTime(timezone=True), nullable=True)
     urls = relationship("URL", back_populates="owner", cascade="all, delete")
     logins = relationship("LoginLog", back_populates="user", cascade="all, delete")
 
@@ -27,8 +27,8 @@ class URL(Base):
     category = Column(String(50), nullable=True)
     is_safe = Column(Boolean, default=True)
     safety_note = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    expires_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    expires_at = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, default=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     owner = relationship("User", back_populates="urls")
@@ -39,7 +39,7 @@ class Click(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     url_id = Column(Integer, ForeignKey("urls.id"), nullable=False)
-    clicked_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    clicked_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)
     referer = Column(Text, nullable=True)
@@ -50,7 +50,7 @@ class LoginLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    logged_in_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    logged_in_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)
     user = relationship("User", back_populates="logins")
@@ -59,7 +59,7 @@ class SiteVisit(Base):
     __tablename__ = "site_visits"
 
     id = Column(Integer, primary_key=True, index=True)
-    visited_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    visited_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)
     path = Column(String(255), nullable=True)
