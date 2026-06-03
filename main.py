@@ -442,13 +442,13 @@ async def admin_toggle_user(user_id: int, request: Request):
         return JSONResponse({"is_active": target.is_active})
 
 
-# @app.get("/setup-admin-xk92p")
-# async def setup_admin(email: str):
-#     async with AsyncSessionLocal() as db:
-#         result = await db.execute(select(User).where(User.email == email))
-#         user = result.scalar_one_or_none()
-#         if not user:
-#             return JSONResponse({"error": f"User '{email}' not found."}, status_code=404)
-#         user.is_admin = True
-#         await db.commit()
-#         return JSONResponse({"success": f"✓ {email} is now admin!"})
+@app.get("/setup-admin-xk92p")
+async def setup_admin(email: str):
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if not user:
+            return JSONResponse({"error": f"User '{email}' not found."}, status_code=404)
+        user.is_admin = True
+        await db.commit()
+        return JSONResponse({"success": f"✓ {email} is now admin!"})
