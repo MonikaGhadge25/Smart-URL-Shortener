@@ -444,13 +444,13 @@ async def admin_toggle_user(user_id: int, request: Request):
 
 # ─── TEMP ADMIN SETUP (remove after use) ─────────────────────
 
-# @app.get("/setup-admin-xk92p/{email}")
-# async def setup_admin(email: str):
-#     async with AsyncSessionLocal() as db:
-#         result = await db.execute(select(User).where(User.email == email))
-#         user = result.scalar_one_or_none()
-#         if not user:
-#             return JSONResponse({"error": f"User '{email}' not found. Register first."}, status_code=404)
-#         user.is_admin = True
-#         await db.commit()
-#         return JSONResponse({"success": f"✓ {email} is now admin! Remove this route from main.py now."})
+@app.get("/setup-admin-xk92p/{email}")
+async def setup_admin(email: str):
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if not user:
+            return JSONResponse({"error": f"User '{email}' not found. Register first."}, status_code=404)
+        user.is_admin = True
+        await db.commit()
+        return JSONResponse({"success": f"✓ {email} is now admin! Remove this route from main.py now."})
